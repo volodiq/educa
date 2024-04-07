@@ -1,14 +1,17 @@
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.urls import reverse_lazy
-from django.views.generic import ListView
-from django.views.generic.edit import CreateView, DeleteView, UpdateView
-from django.views.generic.base import TemplateResponseMixin, View
-from django.shortcuts import get_object_or_404, redirect
+from braces.views import CsrfExemptMixin, JsonRequestResponseMixin
 from django.apps import apps
+from django.contrib.auth.mixins import (LoginRequiredMixin,
+                                        PermissionRequiredMixin)
 from django.forms.models import modelform_factory
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse_lazy
+from django.views.generic import ListView, DetailView
+from django.views.generic.base import TemplateResponseMixin, View
+from django.views.generic.edit import CreateView, DeleteView, UpdateView
+from django.db.models import Count
 
 from .forms import ModuleFormSet
-from .models import Course, Module, Content
+from .models import Content, Course, Module, Subject
 
 
 class OwnerMixin:
@@ -110,7 +113,7 @@ class ContentCreateUpdateView(TemplateResponseMixin, View):
 
     def post(self, request, module_id, model_name, pk=None):
         form = self.get_form(
-            self.model, instance=self.obj, data=request.post, files=request.FILES
+            self.model, instance=self.obj, data=request.POST, files=request.FILES
         )
 
         if form.is_valid():
@@ -119,27 +122,60 @@ class ContentCreateUpdateView(TemplateResponseMixin, View):
             obj.save()
             if not pk:
                 Content.objects.create(module=self.module, item=obj)
-            return redirect("manage_content_list", self.module.id)
+            return redirect("module_content_list", self.module.id)
         return self.render_to_response({"form": form, "object": self.obj})
 
 
 class ContentDeleteView(View):
     def post(self, request, pk):
-        content = get_object_or_404(
-            Content,
-            id=id,
-            module__course__owner=request.user
-        )
+        content = get_object_or_404(Content, id=id, module__course__owner=request.user)
         module = content.module
         content.item.delete()
         content.delete()
-        return redirect('module_content_list', module.id)
+        return redirect("module_content_list", module.id)
 
 
 class ModuleContentListView(TemplateResponseMixin, View):
-    template_name = 'courses/manage/module/content_list.html'
+    template_name = "courses/manage/module/content_list.html"
+
     def get(self, request, module_id):
-        module = get_object_or_404(Module,
-                                   id=module_id,
-                                   course__owner=request.user)
-        return self.render_to_response({'module': module})
+        module = get_object_or_404(Module, id=module_id, course__owner=request.user)
+        return self.render_to_response({"module": module})
+
+
+class ModuleOrderView(CsrfExemptMixin, JsonRequestResponseMixin, View):
+    def post(self, request):
+        for id, order in self.request_json.items():
+            Module.objects.filter(id=id, course__owner=request.user).update(order=order)
+        return self.render_json_response({"saved": "OK"})
+
+
+class ContentOrderView(CsrfExemptMixin, JsonRequestResponseMixin, View):
+    def post(self, request):
+        for id, order in self.request_json.items():
+            Content.objects.filter(id=id, module__course__owner=request.user).update(
+                order=order
+            )
+        return self.render_json_response({"saved": "OK"})
+
+
+class CourseListView(TemplateResponseMixin, View):
+    model = Course
+    template_name = 'courses/course/list.html'
+
+    def get(self, request, subject=None):
+        subjects = Subject.objects.annotate(
+                   total_courses=Count('courses'))
+        courses = Course.objects.annotate(
+                   total_modules=Count('modules'))
+        if subject:
+            subject = get_object_or_404(Subject, slug=subject)
+            courses = courses.filter(subject=subject)
+        return self.render_to_response({'subjects': subjects,
+                                      'subject': subject,
+                                      'courses': courses})
+
+
+class CourseDetailView(DetailView):
+    model = Course
+    template_name = 'courses/course/detail.html'
