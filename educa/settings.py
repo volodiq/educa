@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from django.urls import reverse_lazy
+
 # BASE DIR
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -14,6 +16,11 @@ ALLOWED_HOSTS = ["*"]
 INSTALLED_APPS = [
     # Приложения проекта
     "courses.apps.CoursesConfig",
+    "students.apps.StudentsConfig",
+    # Библиотеки
+    "redisboard",
+    "embed_video",
+    "debug_toolbar",
     # Django
     "django.contrib.admin",
     "django.contrib.auth",
@@ -24,6 +31,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -59,6 +67,14 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
+    }
+}
+
+# Cache
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379",
     }
 }
 
@@ -99,3 +115,11 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Auth
+LOGIN_REDIRECT_URL = reverse_lazy("student_course_list")
+
+# Debug
+INTERNAL_IPS = [
+    "127.0.0.1",
+]

@@ -14,7 +14,10 @@
             <ul class="menu">
                 {% if request.user.is_authenticated %}
                     <li>
-                        <a href="{% url "logout" %}">Sign out</a>
+                        <form action="{% url "logout" %}" method="post">
+                            {% csrf_token %}
+                            <input type="submit" value="Sign out">
+                        </form>
                     </li>
                 {% else %}
                     <li>
@@ -26,8 +29,7 @@
         <div id="content">
             {% block content %}{% endblock %}
         </div>
-            {% block include_js %}
-    {% endblock %}
+        {% block include_js %}{% endblock %}
         <script>
       document.addEventListener('DOMContentLoaded', (event) => {
         // DOM-модель загружена
