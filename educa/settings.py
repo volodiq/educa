@@ -18,6 +18,7 @@ INSTALLED_APPS = [
     "courses.apps.CoursesConfig",
     "students.apps.StudentsConfig",
     # Библиотеки
+    "rest_framework",
     "redisboard",
     "embed_video",
     "debug_toolbar",
@@ -118,6 +119,13 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Auth
 LOGIN_REDIRECT_URL = reverse_lazy("student_course_list")
+
+# DRF
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly"
+    ]
+}
 
 # Debug
 INTERNAL_IPS = [
